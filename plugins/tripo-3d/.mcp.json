@@ -2,9 +2,13 @@
   "mcpServers": {
     "tripo": {
       "type": "http",
-      "url": "https://developers.tripo3d.com/mcp",
+      "url": "https://openapi-mcp.tripo3d.ai/mcp",
       "enabled": true,
-      "timeoutMs": 90000
+      "timeoutMs": 90000,
+      "headers": {
+        "X-Tripo-Client": "zcode",
+        "X-Tripo-Distribution": "zcode_plugin"
+      }
     }
   }
 }

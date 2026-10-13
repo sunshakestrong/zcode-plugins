@@ -5,6 +5,10 @@ description: Generate a 3D model from a text prompt, a reference image, or an ex
 
 # Tripo 3D
 
+## 自动渠道标记
+
+使用 tripo-cli 0.7.0 或更新版本。每次执行 CLI 业务命令时，由 Agent 自动设置 `TRIPO_CLIENT_APP=zcode` 与 `TRIPO_DISTRIBUTION_CHANNEL=zcode_plugin`；不要求用户设置，也不写入账号 profile。POSIX 在该命令前添加环境变量前缀；PowerShell 在该命令前设置 `$env:TRIPO_CLIENT_APP` 和 `$env:TRIPO_DISTRIBUTION_CHANNEL`。不修改区域参数、确认生成的规则或 stdout 输出。
+
 Generate engine-ready 3D assets with Tripo. Two execution paths exist; pick one
 before doing anything else, and never pretend to run what this environment
 cannot run.
@@ -47,13 +51,13 @@ account. ZCode runs the OAuth flow but never opens a browser on its own — the
 user has to click once. Your job is to guide them through the pages; never ask
 for an API key in the chat.
 
-**This plugin build talks to the China-mainland MCP**
-(`https://developers.tripo3d.com/mcp`). The authorization page does **not**
-offer a region picker — it always opens the **国内站** console
-(developers.tripo3d.com, +86 SMS sign-in, Alipay top-up). An overseas-site
-account (developers.tripo3d.ai) will not work here: tell the user to install
-the overseas Tripo 3D plugin build, or use the CLI path with
-`login --region ov`.
+**This plugin build talks to the international MCP**
+(`https://openapi-mcp.tripo3d.ai/mcp`). The authorization page does **not**
+offer a region picker — it always opens the **海外站** console
+(developers.tripo3d.ai, email sign-in, Stripe top-up). A China-mainland
+account (developers.tripo3d.com) will not work here: tell the user to install
+the China Tripo 3D plugin build, or use the CLI path with
+`login --region cn`.
 
 1. **设置 → MCP** → group 「Plugin MCP 服务器」 → the Tripo row shows
    「需要授权」 → click **打开授权**. The system browser opens the Tripo
