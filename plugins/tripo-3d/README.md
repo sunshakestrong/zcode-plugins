@@ -2,24 +2,39 @@
 
 [中文](./README_CN.md)
 
+## 0.1.5
+
+Game/realtime recipes explicitly prefer **P2** (more credits than H/P1); **P1**
+remains optional for lower cost and speed, and v3.1 for film/render/print. Rig defaults to v3.0, with
+animation presets selected from the upstream rig model. Retopology v3.0's
+`smart_uv` and standalone `tripo_smart_uv` are distinct billed workflows.
+Fast textures require v3.5; `chat_image_1` is retired.
+
+The CLI path requires **0.8.0 or later**, run as `npx tripo-cli@0.8`; do not use
+npm `latest`. Verify the version before executing; if unavailable,
+stop rather than downgrade. A plan is not a price quote: cost is not estimated
+here, and uncertainty needs explicit consent. Never switch accounts silently.
+MCP remains the default; missing authorization is not permission to use CLI.
+The hook also enforces source attribution and explicit model/billing decisions.
+
 The official Tripo plugin for ZCode. Generate textured 3D models from a text
 prompt or a reference image, with rigging, animation, retopology and format
 conversion (GLB/FBX/OBJ/STL/USDZ/3MF), and land the files directly in your
 project. Built for games, film, AR and 3D printing.
 
-Connect your **China-mainland** Tripo account once in the browser
-(developers.tripo3d.com) — no API key pasting. This build's MCP endpoint is
-China-only; overseas-site accounts need the overseas Tripo 3D plugin build, or
-the CLI with `--region ov`.
+Connect your **international** Tripo account once in the browser
+(developers.tripo3d.ai) — no API key pasting. This build's MCP endpoint is
+international-only; China-mainland accounts need the China Tripo 3D plugin
+build, or the CLI with `--region cn`.
 
 ## Components
 
 | Component | What it does |
 | --- | --- |
-| Skill `tripo-3d` | Main workflow: execution-path selection, authorization guidance, MCP workflow, scenario → tool-chain mapping, input handling, credit rules; plus the fallback `tripo-cli` path |
+| Skill `tripo-3d` | Main workflow: execution-path selection, authorization guidance, MCP workflow, scenario → tool-chain mapping, input handling, credit rules; plus an explicitly selected `tripo-cli` path |
 | Skill `tripo-game-asset` | Game-asset recipes: budgeted low-poly props, LOD chains, rigged characters with locomotion clips, wiring into Unity/Unreal/Godot/Three.js |
-| MCP server `tripo` | Remote Streamable HTTP server `https://developers.tripo3d.com/mcp` (OAuth 2.1) exposing 26 tools such as `tripo_plan`, `tripo_text_to_3d`, `tripo_image_to_3d`, `tripo_task_wait`, `tripo_mesh_edit`, `tripo_rig`, `tripo_animate`, `tripo_convert` |
-| Hook `SessionStart` | Injects five hard rules (async waiting, link expiry, credit confirmation / `tripo_plan`, browser authorization, honest failure reporting) so they hold even when no skill was triggered |
+| MCP server `tripo` | Remote Streamable HTTP server `https://openapi-mcp.tripo3d.ai/mcp` (OAuth 2.1), including `tripo_plan`, generation, rigging, conversion and `tripo_smart_uv`; available tool schemas are authoritative |
+| Hook `SessionStart` | Injects seven rules: async waiting, link expiry, credit confirmation, browser authorization, honest failures, source/version gates and explicit model/billing decisions |
 
 ## Usage
 
@@ -40,11 +55,11 @@ The Tripo MCP server needs a one-time authorization:
 
 1. Open **Settings → MCP**, find the Tripo row under "Plugin MCP servers"
    (it shows "Authorization required") and click **Open authorization**.
-2. The system browser opens the Tripo authorization page for the **China site**
-   (developers.tripo3d.com — +86 SMS sign-in, Alipay top-up). There is no
+2. The system browser opens the Tripo authorization page for the **international site**
+   (developers.tripo3d.ai — email sign-in, Stripe top-up). There is no
    region picker on this page. You can sign up on the spot; new accounts get
-   free credits. An international-site account will not authorize against this
-   build — use the overseas plugin or `tripo-cli` with `--region ov`.
+   free credits. A China-mainland account will not authorize against this
+   build — use the China plugin or `tripo-cli` with `--region cn`.
 3. The page shows a one-time verification code and opens the Tripo console:
    sign in, type the code into **Verification code**, click **Authorize**.
 4. ZCode reconnects and loads the tools automatically. To revoke access,
@@ -53,9 +68,9 @@ The Tripo MCP server needs a one-time authorization:
 
 ## Dependencies, network access and side effects
 
-- **Network**: MCP tool calls go to `https://developers.tripo3d.com/mcp`;
-  authorization redirects to the China Tripo console
-  (developers.tripo3d.com). Results are downloaded from Tripo's CDN through
+- **Network**: MCP tool calls go to `https://openapi-mcp.tripo3d.ai/mcp`;
+  authorization redirects to the international Tripo console
+  (developers.tripo3d.ai). Results are downloaded from Tripo's CDN through
   short-lived links (about 5 minutes).
 - **Account and billing**: every generation spends credits from your own
   Tripo account; each tool reports `credits_consumed`, failed tasks are
@@ -66,10 +81,11 @@ The Tripo MCP server needs a one-time authorization:
   write nothing.
 - **Command execution**: on the MCP path, shell commands run only to upload a
   local image/model (the `curl` returned by `tripo_upload_ticket`) or to
-  download a result. The fallback CLI path downloads and runs
-  [tripo-cli](https://www.npmjs.com/package/tripo-cli) (MIT, via
-  `npx tripo-cli@latest`), only for jobs that need it (e.g. bulk generation),
-  and says so first.
+  download a result. The optional [tripo-cli](https://www.npmjs.com/package/tripo-cli)
+  path (MIT) runs as `npx tripo-cli@0.8`, minimum 0.8.0. It runs only after the user explicitly chooses CLI
+  and confirms the account, region and billing plan; check the actual version first.
+  If it is unavailable, stop. There is no automatic fallback from MCP
+  failure, missing authorization, batch work or a request to save files locally.
 - **Hook**: `hooks/session-start.mjs` needs `node` on PATH. It reads the
   event from stdin and prints a fixed text to stdout; no network, no file
   access.
