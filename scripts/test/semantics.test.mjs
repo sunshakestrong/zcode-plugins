@@ -23,6 +23,17 @@ test('explicit game routing preserves P2 and P1 choice', () => {
   assert.match(ref, /cost|price/);
 });
 
+test('P2 is the P-series default; P1 only when the user names or picks it', () => {
+  const flat = text => text.replace(/\s+/g, ' ');
+  assert.match(ref, /\| \*\*P2\*\* \|[^\n]*\| default P-series model,/);
+  assert.match(ref, /\| \*\*P1\*\* \|[^\n]*\| P series alternative, only when the user names it or picks it/);
+  const docs = [skill, ref, game];
+  if (hybrid) docs.push(read('hooks/session-start.mjs'), read('README.md'));
+  for (const text of docs) assert.match(flat(text), /within the P series the default is P2, and P1 is used only when the user names it or picks it|P-series default; \*\*P1\*\* is used only when the user names it or picks it/);
+  if (hybrid) assert.match(read('README_CN.md'), /使用 P 系列时默认 \*\*P2\*\*；\*\*P1\*\*（积分更低、速度更快）仅在用户明确指定或选择时使用/);
+  assert.doesNotMatch(flat(docs.join('\n')), /keep P1 available|retain P1 for|optional low-poly for lower cost|P1 remains optional/);
+});
+
 test('rig defaults and presets follow the upstream rig model', () => {
   for (const text of texts) {
     assert.match(text, /v3\.0/);
@@ -59,18 +70,12 @@ test('release version and billing uncertainty are explicit', () => {
     const manifest = read('.zcode-plugin/plugin.json');
     assert.equal(JSON.parse(manifest).version, '0.1.5');
     assert.equal(read('.claude-plugin/plugin.json'), manifest);
-    assert.match(skill, /0\.8\.0/);
-    assert.match(skill, /npx tripo-cli@0\.8\b/);
-    assert.doesNotMatch(skill, /npx tripo-cli@latest/);
     const hook = read('hooks/session-start.mjs');
-    assert.match(hook, /0\.8\.0/);
-    assert.match(hook, /npx tripo-cli@0\.8\b/);
     assert.match(hook, /P2/);
     assert.match(hook, /P1/);
     assert.match(hook, /not estimated/i);
     for (const doc of ['README.md', 'README_CN.md']) {
       assert.match(read(doc), /0\.1\.5/);
-      assert.match(read(doc), /0\.8\.0/);
     }
     for (const [name, text] of [['SKILL.md', skill], ['tripo-game-asset', game], ['capability.md', ref], ['session-start.mjs', hook], ['README.md', read('README.md')], ['README_CN.md', read('README_CN.md')]]) {
       assert.doesNotMatch(text, /\bcandidate\b|unreleased|unpublished|not yet published|未发布|候选/i, name);
@@ -117,9 +122,6 @@ test('template pass-through is not a supported shortcut', () => {
   assert.match(ref, /Text-to-image templates: `asset_extraction`, `character_completion`, `t_pose`, `variants`, `figure`/);
   assert.match(ref, /Image-to-image templates: `t_pose`, `character_completion`, `3d_enhance`, `variants`, `figure`/);
   assert.match(ref, /head_extraction.*print_clay.*not in the documented endpoint whitelists/);
-  assert.match(ref, /t_pose=true.*sketch_to_render=true.*raw parameters/);
-  assert.match(ref, /does not normalize these booleans into `template`/);
-  assert.match(ref, /local acceptance is not server support/);
   assert.doesNotMatch(ref, /The CLI also\s+accepts `head_extraction`/);
 });
 
@@ -132,16 +134,41 @@ test('historical prices cannot substitute for a current regional estimate', () =
   assert.doesNotMatch(ref, /so the cost can be quoted before a run/);
 });
 
-test('README requires explicit CLI selection pinned to 0.8', () => {
+test('MCP is the only execution path', () => {
+  const docs = [['SKILL.md', skill], ['tripo-game-asset', game], ['capability.md', ref]];
+  if (hybrid) docs.push(['session-start.mjs', read('hooks/session-start.mjs')], ['README.md', read('README.md')], ['README_CN.md', read('README_CN.md')]);
+  for (const [name, text] of docs) {
+    assert.doesNotMatch(text, /tripo-cli|npx tripo|tripo make|TRIPO_CLIENT_APP|TRIPO_DISTRIBUTION_CHANNEL|--region/, name);
+  }
+  assert.match(skill, /MCP is the only execution path/);
+  assert.match(game, /runs through the Tripo\s+MCP tools only/);
+});
+
+test('PBR stays off unless the user explicitly asks for it', () => {
+  const flat = text => text.replace(/\s+/g, ' ');
+  assert.match(flat(skill), /Send `pbr: false` on every generation and `tripo_texture` call unless the user explicitly asks for PBR/);
+  assert.match(flat(game), /`pbr: false` unless the user explicitly asks for PBR/);
+  const docs = [skill, game, ref];
+  if (hybrid) {
+    const hook = read('hooks/session-start.mjs');
+    assert.match(hook, /Send pbr: false on every generation and tripo_texture call unless the user explicitly asks for PBR/);
+    docs.push(hook);
+  }
+  for (const text of docs.map(flat)) {
+    for (const match of text.matchAll(/pbr: true|"pbr": ?true|pbr=true/g)) {
+      const around = text.slice(Math.max(0, match.index - 200), match.index + 200);
+      assert.match(around, /explicitly asks? for PBR|asks for it/, around);
+    }
+  }
+});
+
+test('README describes the MCP-only path', () => {
   const en = read('README.md');
   const zh = read('README_CN.md');
-  for (const text of [en, zh]) {
-    assert.doesNotMatch(text, /npx tripo-cli@latest/);
-    assert.match(text, /0\.8\.0/);
-    assert.match(text, /npx tripo-cli@0\.8\b/);
-  }
-  assert.match(en, /explicitly chooses CLI/);
-  assert.match(en, /no automatic fallback/);
-  assert.match(zh, /明确选择 CLI/);
-  assert.match(zh, /不自动.*CLI/);
+  assert.match(en, /there is no CLI path/);
+  assert.match(en, /never installs or runs a command-line client/);
+  assert.match(en, /PBR stays off unless\s+you explicitly ask for it/);
+  assert.match(zh, /没有 CLI 路径/);
+  assert.match(zh, /不会安装或调用任何命令行客户端/);
+  assert.match(zh, /PBR 默认关闭/);
 });
