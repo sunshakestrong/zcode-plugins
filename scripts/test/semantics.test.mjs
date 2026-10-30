@@ -43,6 +43,7 @@ test('rig defaults and presets follow the upstream rig model', () => {
   assert.match(ref, /v3\.0-20260909/);
   assert.match(ref, /preset:walk/);
   assert.match(ref, /preset:biped:/);
+  assert.match(ref, /always pass it by body type: `v3\.0`[^\n]*`v2\.5` \(`v2\.5-20260210`, the official animal rig\) for `quadruped`[^\n]*API's own default is `v1\.0-20240301`/);
 });
 
 test('retopology v3 and standalone UV are distinct billed workflows', () => {
@@ -125,8 +126,8 @@ test('template pass-through is not a supported shortcut', () => {
   assert.doesNotMatch(ref, /The CLI also\s+accepts `head_extraction`/);
 });
 
-test('historical prices cannot substitute for a current regional estimate', () => {
-  assert.match(ref, /Historical examples only, not a current regional estimate/);
+test('prices name their official source, region and date', () => {
+  assert.match(ref, /Official list prices from the Tripo pricing pages/);
   assert.match(ref, /Numeric prices and add-ons anywhere in this file/);
   assert.match(ref, /not_estimated/);
   assert.match(ref, /not zero/);
