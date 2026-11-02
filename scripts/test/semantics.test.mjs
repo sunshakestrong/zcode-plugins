@@ -54,7 +54,17 @@ test('retopology v3 and standalone UV are distinct billed workflows', () => {
   }
   assert.match(ref, /80[ ,]?000/);
   assert.match(ref, /uv_render_url/);
-  assert.match(ref, /35.*40/);
+  const workflow = ref.split('## Retopology and UV workflows')[1].split('## Processing steps')[0].replace(/\s+/g, ' ');
+  assert.match(workflow, /`tripo_decimate` defaults to v2\.0/);
+  assert.match(workflow, /Explicit `model: "v3\.0"` supports `smart_uv: true`/);
+  assert.match(workflow, /With any other model, `smart_uv: true` is rejected and no task is created/);
+  assert.match(workflow, /Check current pricing and confirm any model\/cost change before submitting/);
+  assert.match(workflow, /Standalone `tripo_smart_uv` is separately billed/);
+  assert.match(workflow, /Do not substitute this separate paid task.*without confirming the extra cost/);
+  const decimatePrice = ref.split('## Prices')[1].split('\n').find(line => line.startsWith('| `tripo_decimate` |'));
+  assert.ok(decimatePrice, 'missing decimate price row');
+  assert.match(decimatePrice, /current pricing.*selected model and options/i);
+  assert.match(decimatePrice, /not_estimated if unavailable/i);
 });
 test('image and texture contracts reject stale advice', () => {
   assert.match(ref, /chat_image_1` (?:is retired|retired)/);
@@ -66,7 +76,9 @@ test('image and texture contracts reject stale advice', () => {
 
 // Offline checks: no network calls, installations or paid generations.
 test('release version and billing uncertainty are explicit', () => {
-  assert.match(skill, /cost.*not estimated|not estimated.*cost/i);
+  const workflow = skill.split('## Workflow')[1].split('\n## ')[0].replace(/\s+/g, ' ');
+  assert.match(workflow, /each billed step.*estimate or `not_estimated`/i);
+  assert.match(workflow, /not_estimated` to the user, and wait for explicit confirmation/i);
   if (hybrid) {
     const manifest = read('.zcode-plugin/plugin.json');
     assert.equal(JSON.parse(manifest).version, '0.1.5');
@@ -74,7 +86,8 @@ test('release version and billing uncertainty are explicit', () => {
     const hook = read('hooks/session-start.mjs');
     assert.match(hook, /P2/);
     assert.match(hook, /P1/);
-    assert.match(hook, /not estimated/i);
+    assert.match(hook, /unknown costs not_estimated/i);
+    assert.match(hook, /source, region and date/i);
     for (const doc of ['README.md', 'README_CN.md']) {
       assert.match(read(doc), /0\.1\.5/);
     }
@@ -147,12 +160,22 @@ test('MCP is the only execution path', () => {
 
 test('PBR stays off unless the user explicitly asks for it', () => {
   const flat = text => text.replace(/\s+/g, ' ');
-  assert.match(flat(skill), /Send `pbr: false` on every generation and `tripo_texture` call unless the user explicitly asks for PBR/);
+  const tools = ['tripo_text_to_3d', 'tripo_image_to_3d', 'tripo_multiview_to_3d', 'tripo_texture'];
+  const skillRule = flat(skill.split('**PBR is opt-in.**')[1].split('\n- ')[0]);
+  assert.match(skillRule, /Send `pbr: false` on every/);
+  for (const tool of tools) assert.match(skillRule, new RegExp(`\\b${tool}\\b`));
+  assert.match(skillRule, /unless the user explicitly asks for PBR/);
+  assert.match(skillRule, /only then send `pbr: true`, which also forces `texture: true`/);
+  assert.match(skillRule, /API turns PBR on when `pbr` is left out, so never omit it/);
   assert.match(flat(game), /`pbr: false` unless the user explicitly asks for PBR/);
   const docs = [skill, game, ref];
   if (hybrid) {
     const hook = read('hooks/session-start.mjs');
-    assert.match(hook, /Send pbr: false on every generation and tripo_texture call unless the user explicitly asks for PBR/);
+    const hookRule = hook.split('6. PBR is opt-in.')[1].split('\n7.')[0];
+    assert.match(hookRule, /Send pbr: false on every/);
+    for (const tool of tools) assert.match(hookRule, new RegExp(`\\b${tool}\\b`));
+    assert.match(hookRule, /unless the user explicitly asks for PBR/);
+    assert.match(hookRule, /only then send pbr: true, which also forces texture: true/);
     docs.push(hook);
   }
   for (const text of docs.map(flat)) {
